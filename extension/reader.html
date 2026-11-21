@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>听阅</title>
+  <link rel="icon" href="icons/icon-32.png">
+  <link rel="stylesheet" href="reader.css">
+  <script type="module" src="reader.js"></script>
+</head>
+<body>
+  <header class="masthead">
+    <div class="masthead-inner">
+      <div class="brand"><img src="icons/icon-48.png" width="32" height="32" alt="">听阅</div>
+      <nav aria-label="阅读设置">
+        <button id="library-button" class="quiet" type="button" aria-controls="library" aria-expanded="false">阅读库</button>
+        <button id="theme" class="quiet" type="button" aria-pressed="false">深色</button>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <p id="notice" class="notice" role="status">正在加载网页正文…</p>
+
+    <div id="reading" hidden>
+      <article id="article" aria-labelledby="title">
+        <header class="article-header">
+          <p id="source" class="source"></p>
+          <h1 id="title"></h1>
+          <div class="article-actions">
+            <button id="favorite" class="quiet" type="button" aria-label="收藏此文章" aria-pressed="false" hidden>加入收藏</button>
+            <p id="storage-status" class="status" role="status"></p>
+          </div>
+        </header>
+
+        <section id="player" class="player" aria-label="朗读控制" hidden>
+          <div class="controls">
+            <button id="toggle" class="primary" type="button">播放</button>
+            <button id="previous" class="quiet" type="button">上一段</button>
+            <button id="next" class="quiet" type="button">下一段</button>
+            <button id="stop" class="quiet" type="button">停止</button>
+            <label class="rate" for="rate">
+              语速
+              <input id="rate" type="range" min="0.5" max="2" step="0.1" value="1">
+              <output id="rate-value" for="rate" aria-hidden="true">1.0×</output>
+            </label>
+          </div>
+          <div class="progress-row">
+            <progress id="progress" aria-label="朗读进度" max="1" value="0"></progress>
+            <span id="position"></span>
+          </div>
+          <p id="player-status" class="status" role="status"></p>
+        </section>
+
+        <div id="paragraphs" class="paragraphs"></div>
+      </article>
+    </div>
+
+    <section id="library" aria-labelledby="library-title" hidden>
+      <div class="library-header">
+        <h1 id="library-title" tabindex="-1">阅读库</h1>
+        <button id="return-to-article" class="quiet" type="button" hidden>返回文章</button>
+      </div>
+      <div class="filters" role="group" aria-label="阅读库筛选">
+        <button id="show-history" class="quiet" type="button" aria-pressed="true">历史</button>
+        <button id="show-favorites" class="quiet" type="button" aria-pressed="false">收藏</button>
+      </div>
+      <p id="library-status" class="status" role="status"></p>
+      <ul id="library-list" class="library-list"></ul>
+    </section>
+  </main>
+</body>
+</html>
