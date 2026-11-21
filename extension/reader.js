@@ -131,7 +131,7 @@ function renderLibrary() {
   libraryList.replaceChildren(rows);
   libraryStatus.textContent = entries.length ? "" : showFavorites
     ? "收藏的文章会显示在这里。"
-    : "用 elaina 打开的文章会显示在这里。";
+    : "用 elaina listen 打开的文章会显示在这里。";
   if (focusedId) {
     element(focusedId)?.focus({ preventScroll: true });
   }
@@ -409,7 +409,7 @@ function bindParagraphPlayback(content) {
 
 function renderArticle(article, entry) {
   snapshot = article;
-  document.title = snapshot.title + " · elaina";
+  document.title = snapshot.title + " · elaina listen";
   element("title").textContent = snapshot.title;
   element("source").textContent = snapshot.source;
   element("source").hidden = !snapshot.source;
@@ -479,13 +479,13 @@ function renderArticle(article, entry) {
 
 async function loadArticle() {
   if (startsInLibrary) {
-    notice.textContent = "从阅读库选择一篇文章，或在网页上点击 elaina 图标。";
+    notice.textContent = "从阅读库选择一篇文章，或在网页上点击 elaina listen 图标。";
     await setLibraryVisible(true);
     return;
   }
 
   if (location.hash === "#storage-error") {
-    notice.textContent = "无法暂存正文。请关闭其他 elaina 阅读页后再试。";
+    notice.textContent = "无法暂存正文。请关闭其他 elaina listen 阅读页后再试。";
     return;
   }
 
@@ -504,7 +504,7 @@ async function loadArticle() {
   const key = "reader:" + tab?.id;
   const article = (await chrome.storage.session.get(key))[key];
   if (!article || article.error) {
-    notice.textContent = article?.error ?? "阅读内容已失效。请返回原网页，再点击 elaina 图标。";
+    notice.textContent = article?.error ?? "阅读内容已失效。请返回原网页，再点击 elaina listen 图标。";
     return;
   }
 

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "elaina",
-  "version": "0.2.1",
+  "name": "elaina listen",
+  "version": "0.3.0",
   "description": "用本机语音朗读网页与选中文字，收藏文章并从上次的位置继续听。",
   "incognito": "not_allowed",
   "permissions": ["activeTab", "scripting", "storage", "contextMenus"],
@@ -16,7 +16,7 @@
     "128": "icons/icon-128.png"
   },
   "action": {
-    "default_title": "elaina · 打开阅读页",
+    "default_title": "elaina listen · 打开阅读页",
     "default_icon": {
       "16": "icons/icon-16.png",
       "32": "icons/icon-32.png"

@@ -1,7 +1,7 @@
-export const INDEX_KEY = "tingyue:library";
-export const THEME_KEY = "tingyue:theme";
+export const INDEX_KEY = "elaina_listen:library";
+export const THEME_KEY = "elaina_listen:theme";
 
-const ARTICLE_PREFIX = "tingyue:article:";
+const ARTICLE_PREFIX = "elaina_listen:article:";
 const MAX_ARTICLES = 80;
 const encoder = new TextEncoder();
 

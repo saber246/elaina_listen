@@ -3,8 +3,8 @@ import {
 } from "./library.js";
 
 const READER_URL = chrome.runtime.getURL("reader.html");
-const SELECTION_COMMAND = "tingyue-read-selection";
-const LIBRARY_COMMAND = "tingyue-open-library";
+const SELECTION_COMMAND = "elaina_listen-read-selection";
+const LIBRARY_COMMAND = "elaina_listen-open-library";
 const ALLOWED_PAGES = ["http://*/*", "https://*/*"];
 
 let pendingStorage = Promise.resolve();
@@ -16,20 +16,20 @@ function useLibrary(operation) {
 }
 
 function logError(error) {
-  console.error("elaina 操作未完成", error);
+  console.error("elaina listen 操作未完成", error);
 }
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({
       id: SELECTION_COMMAND,
-      title: "用 elaina 朗读选中文字",
+      title: "用 elaina listen 朗读选中文字",
       contexts: ["selection"],
       documentUrlPatterns: ALLOWED_PAGES,
     });
     chrome.contextMenus.create({
       id: LIBRARY_COMMAND,
-      title: "打开 elaina 阅读库",
+      title: "打开 elaina listen 阅读库",
       contexts: ["action"],
     });
   });
