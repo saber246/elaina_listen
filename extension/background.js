@@ -16,20 +16,20 @@ function useLibrary(operation) {
 }
 
 function logError(error) {
-  console.error("听阅操作未完成", error);
+  console.error("elaina 操作未完成", error);
 }
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({
       id: SELECTION_COMMAND,
-      title: "用听阅朗读选中文字",
+      title: "用 elaina 朗读选中文字",
       contexts: ["selection"],
       documentUrlPatterns: ALLOWED_PAGES,
     });
     chrome.contextMenus.create({
       id: LIBRARY_COMMAND,
-      title: "打开听阅阅读库",
+      title: "打开 elaina 阅读库",
       contexts: ["action"],
     });
   });
@@ -56,7 +56,7 @@ const libraryCommands = {
   "library:open": ({ id }) => openSavedArticle(id),
   "library:entry": ({ id }) => getEntry(id),
   "library:favorite": ({ id, version, favorite }) => saveFavorite(id, version, favorite),
-  "library:progress": ({ id, version, index, completed }) => saveProgress(id, version, index, completed),
+  "library:progress": ({ id, version, index, offset, completed }) => saveProgress(id, version, index, completed, offset),
   "library:remove": ({ id }) => removeArticle(id),
 };
 

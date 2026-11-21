@@ -1,5 +1,10 @@
+import { estimateSpeechSeconds } from "./timeline.js";
+
 const MAX_CHUNK_LENGTH = 180;
+const MISSING_VOICE_MESSAGE = "未找到匹配的本机语音。请检查系统语言设置中的语音包，再点击播放。";
 const sentenceSegmenter = new Intl.Segmenter(undefined, { granularity: "sentence" });
+const wordSegmenter = new Intl.Segmenter(undefined, { granularity: "word" });
+const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
 
 function sentenceRanges(paragraph) {
   return Array.from(sentenceSegmenter.segment(paragraph), ({ index, segment }) => ({
@@ -86,22 +91,26 @@ export class ParagraphSpeech {
       ? Math.max(0, Math.min(resume.index, paragraphs.length - 1))
       : 0;
     this.completed = resume.completed === true && index === paragraphs.length - 1;
-    this.setPosition(index);
+    this.setPosition(index, resume.offset);
     this.synthesis.getVoices();
-    this.publish(this.completed ? "上次已读完" : index > 0 ? "已找到上次的朗读位置" : "准备就绪");
+    const resumed = index > 0 || this.offset > 0;
+    this.publish(this.completed ? "上次已读完" : resumed ? "已找到上次的朗读位置" : "准备就绪");
   }
 
   toggle() {
     switch (this.state) {
       case "playing":
+        this.offsetAtStart = this.offset;
+        this.startedAt = null;
         this.state = "paused";
         this.synthesis.pause();
-        this.publish("已暂停");
+        this.publish("已暂停", true);
         break;
       case "paused":
         this.state = "playing";
         this.publish("正在朗读");
         if (this.active) {
+          this.startedAt = this.hasStarted ? performance.now() : null;
           this.synthesis.resume();
         } else {
           this.speakCurrentChunk();
@@ -115,7 +124,7 @@ export class ParagraphSpeech {
   start() {
     this.voice = findLocalVoice(this.synthesis, this.language);
     if (!this.voice) {
-      this.publish("未找到匹配的本机语音。请检查系统语言设置中的语音包，再点击播放。");
+      this.publish(MISSING_VOICE_MESSAGE);
       return;
     }
 
@@ -130,8 +139,29 @@ export class ParagraphSpeech {
     this.speakCurrentChunk();
   }
 
+  playFrom(index, offset) {
+    const voice = findLocalVoice(this.synthesis, this.language);
+    if (!voice) {
+      if (this.state !== "idle") {
+        this.cancelCurrent();
+        this.state = "idle";
+        this.sentence = null;
+      }
+      this.publish(MISSING_VOICE_MESSAGE);
+      return;
+    }
+
+    this.cancelCurrent();
+    this.voice = voice;
+    this.completed = false;
+    this.setPosition(index, offset);
+    this.state = "playing";
+    this.publish("正在朗读", true);
+    this.speakCurrentChunk();
+  }
+
   stop() {
-    const resetProgress = this.index > 0 || this.completed;
+    const resetProgress = this.index > 0 || this.offset > 0 || this.completed;
     this.cancelCurrent();
     this.state = "idle";
     this.completed = false;
@@ -149,17 +179,21 @@ export class ParagraphSpeech {
       return;
     }
 
-    this.cancelCurrent();
-    this.completed = false;
-    this.setPosition(target);
+    this.seek(target, 0);
+  }
 
-    if (this.state === "playing") {
+  seek(index, offset, completed = false) {
+    this.cancelCurrent();
+    this.completed = completed;
+    this.setPosition(index, offset);
+    if (completed) {
+      this.state = "idle";
+      this.publish("已到末尾", true);
+    } else if (this.state === "playing") {
       this.publish("正在朗读", true);
       this.speakCurrentChunk();
-    } else if (this.state === "paused") {
-      this.publish("已暂停，继续后从所选段落开始", true);
     } else {
-      this.publish("已切换段落", true);
+      this.publish(this.state === "paused" ? "已暂停，继续后从新位置开始" : "已调整朗读位置", true);
     }
   }
 
@@ -173,16 +207,50 @@ export class ParagraphSpeech {
     }
   }
 
-  setPosition(index) {
+  get offset() {
+    if (this.completed) {
+      return this.paragraphs[this.index].length;
+    }
+    if (this.startedAt === null) {
+      return this.offsetAtStart;
+    }
+
+    const chunk = this.chunks[this.chunkIndex];
+    const estimated = this.offsetAtStart + (performance.now() - this.startedAt) * this.charactersPerMillisecond;
+    return Math.min(chunk.start + chunk.text.length, estimated);
+  }
+
+  setPosition(index, offset = 0) {
     this.index = index;
-    this.sentences = sentenceRanges(this.paragraphs[index]);
-    this.chunks = splitParagraph(this.paragraphs[index], this.sentences);
+    const paragraph = this.paragraphs[index];
+    this.sentences = sentenceRanges(paragraph);
+    this.chunks = splitParagraph(paragraph, this.sentences);
     this.chunkIndex = 0;
     this.paragraphRate = this.rate;
     this.sentence = null;
+    this.startedAt = null;
+
+    if (Number.isInteger(offset) && offset > 0 && !this.completed) {
+      const target = Math.min(offset, paragraph.length - 1);
+      this.chunkIndex = this.chunks.findIndex((chunk) => chunk.start + chunk.text.length > target);
+      const chunk = this.chunks[this.chunkIndex];
+      const relative = Math.max(0, target - chunk.start);
+      const word = wordSegmenter.segment(chunk.text).containing(relative);
+      const grapheme = graphemeSegmenter.segment(chunk.text).containing(relative);
+      const cut = word?.isWordLike && relative - word.index <= 4 ? word.index : grapheme.index;
+      const suffix = chunk.text.slice(cut);
+      this.chunks[this.chunkIndex] = {
+        start: chunk.start + chunk.text.length - suffix.trimStart().length,
+        text: suffix.trimStart(),
+      };
+    }
+
+    this.offsetAtStart = this.chunks[this.chunkIndex].start;
   }
 
   cancelCurrent() {
+    this.offsetAtStart = this.offset;
+    this.startedAt = null;
     this.active = null;
     this.synthesis.cancel();
     if (this.synthesis.paused) {
@@ -197,10 +265,23 @@ export class ParagraphSpeech {
     utterance.lang = this.voice.lang;
     utterance.rate = this.paragraphRate;
     this.active = utterance;
+    this.hasStarted = false;
+    this.startedAt = null;
+    this.offsetAtStart = chunk.start;
+    this.charactersPerMillisecond = chunk.text.length * utterance.rate / (1000 * estimateSpeechSeconds(chunk.text));
     if (this.sentence) {
       this.sentence = null;
       this.publish();
     }
+
+    utterance.onstart = () => {
+      if (this.active === utterance) {
+        this.hasStarted = true;
+        if (this.state === "playing") {
+          this.startedAt = performance.now();
+        }
+      }
+    };
 
     utterance.onboundary = (event) => {
       if (this.active !== utterance || !Number.isInteger(event.charIndex)
@@ -209,6 +290,11 @@ export class ParagraphSpeech {
         return;
       }
       const offset = chunk.start + event.charIndex;
+      if (this.state === "playing" && offset >= this.offsetAtStart) {
+        this.hasStarted = true;
+        this.offsetAtStart = offset;
+        this.startedAt = performance.now();
+      }
       const range = this.sentences.find(({ start, end }) => offset >= start && offset < end);
       if (range && range !== this.sentence) {
         this.sentence = range;
@@ -222,6 +308,8 @@ export class ParagraphSpeech {
       }
 
       this.active = null;
+      this.startedAt = null;
+      this.sentence = null;
       this.chunkIndex += 1;
       if (this.chunkIndex === this.chunks.length) {
         if (this.index === this.paragraphs.length - 1) {
@@ -232,8 +320,10 @@ export class ParagraphSpeech {
           return;
         }
         this.setPosition(this.index + 1);
-        this.publish(this.state === "playing" ? "正在朗读" : "已暂停", true);
+      } else {
+        this.offsetAtStart = this.chunks[this.chunkIndex].start;
       }
+      this.publish(this.state === "playing" ? "正在朗读" : "已暂停", true);
 
       if (this.state === "playing") {
         this.speakCurrentChunk();
@@ -260,6 +350,7 @@ export class ParagraphSpeech {
     this.onChange({
       state: this.state,
       index: this.index,
+      offset: Math.floor(this.offset),
       sentence: this.sentence,
       completed: this.completed,
       message,

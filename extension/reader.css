@@ -83,6 +83,7 @@ nav,
 .brand img {
   display: block;
   flex: none;
+  border-radius: .35rem;
 }
 
 button {
@@ -200,7 +201,6 @@ h1 {
   font-variant-numeric: tabular-nums;
 }
 
-progress,
 input[type="range"] {
   accent-color: var(--accent);
 }
@@ -210,9 +210,26 @@ input[type="range"] {
   margin: .65rem 0 .25rem;
 }
 
-progress {
+#progress {
   flex: 1;
-  height: .5rem;
+  min-width: 0;
+  margin-inline: 0;
+  cursor: pointer;
+}
+
+.timeline-times {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: .15rem .8rem;
+  margin-bottom: .3rem;
+  color: var(--muted);
+  font-size: .875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.timeline-times span {
+  white-space: nowrap;
 }
 
 #position {
@@ -239,6 +256,20 @@ progress {
 .paragraphs p.is-current {
   background: var(--active-paragraph);
   box-shadow: inset 3px 0 var(--accent);
+}
+
+.paragraph-hold-hint {
+  position: fixed;
+  z-index: 3;
+  max-width: calc(100vw - 1rem);
+  padding: .35rem .65rem;
+  border: 1px solid var(--border);
+  border-radius: .45rem;
+  background: var(--surface);
+  box-shadow: 0 3px 12px #111c1729;
+  color: var(--ink);
+  font-size: .875rem;
+  pointer-events: none;
 }
 
 mark {

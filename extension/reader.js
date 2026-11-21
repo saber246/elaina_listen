@@ -1,5 +1,6 @@
 import { INDEX_KEY, THEME_KEY } from "./library.js";
 import { ParagraphSpeech } from "./speech.js";
+import { createTimeline } from "./timeline.js";
 
 const element = (id) => document.getElementById(id);
 const notice = element("notice");
@@ -28,6 +29,11 @@ let themePreference;
 let highlightedIndex = -1;
 let highlightedSentence;
 const paragraphNodes = [];
+let timeline;
+let speech;
+let timelineRate = 1;
+let timelineTimer;
+let previewing = false;
 
 async function callLibrary(command, data = {}) {
   const response = await chrome.runtime.sendMessage({ type: "library:" + command, ...data });
@@ -40,7 +46,8 @@ async function callLibrary(command, data = {}) {
 function applyTheme() {
   const dark = themePreference === "dark" || (!themePreference && systemTheme.matches);
   document.documentElement.dataset.theme = dark ? "dark" : "light";
-  themeButton.setAttribute("aria-pressed", String(dark));
+  themeButton.textContent = dark ? "浅色" : "深色";
+  themeButton.setAttribute("aria-label", dark ? "切换到浅色模式" : "切换到深色模式");
 }
 
 themeButton.addEventListener("click", async () => {
@@ -124,7 +131,7 @@ function renderLibrary() {
   libraryList.replaceChildren(rows);
   libraryStatus.textContent = entries.length ? "" : showFavorites
     ? "收藏的文章会显示在这里。"
-    : "用听阅打开的文章会显示在这里。";
+    : "用 elaina 打开的文章会显示在这里。";
   if (focusedId) {
     element(focusedId)?.focus({ preventScroll: true });
   }
@@ -216,27 +223,193 @@ function renderHighlight(index, sentence) {
   highlightedSentence = sentence;
 }
 
-function updateControls({ state, index, sentence, completed, message, progressChanged }) {
+function formatClock(seconds) {
+  const minutes = Math.floor(seconds / 60);
+  const remainder = String(seconds % 60).padStart(2, "0");
+  return minutes + ":" + remainder;
+}
+
+function renderTimeline(time, completed, preview = false) {
+  const total = Math.max(1, Math.ceil(timeline.duration / timelineRate));
+  const elapsed = completed ? total : Math.min(total - 1, Math.floor(time / timelineRate));
+  const left = completed ? 0 : Math.max(1, Math.ceil((timeline.duration - time) / timelineRate));
+  if (!preview) {
+    progress.max = total;
+    const value = Math.round(time / timeline.duration * total);
+    progress.value = completed ? total : Math.min(total - 1, value);
+  }
+  element("elapsed-time").textContent = (preview ? "跳到 " : "已听 ") + formatClock(elapsed);
+  element("total-time").textContent = "预计总时长 " + formatClock(total) + "（" + total + " 秒）";
+  element("remaining-time").textContent = "约剩 " + formatClock(left);
+  progress.setAttribute("aria-valuetext", formatClock(elapsed) + "，预计总计 " + total + " 秒");
+}
+
+function refreshTimeline() {
+  if (!previewing && speech) {
+    renderTimeline(timeline.timeAt(speech.index, speech.offset), speech.completed);
+  }
+}
+
+function stopTimelineTimer() {
+  clearInterval(timelineTimer);
+  timelineTimer = undefined;
+}
+
+function updateControls({ state, index, offset, sentence, completed, message, progressChanged }) {
   toggle.textContent = { idle: completed ? "重播" : "播放", playing: "暂停", paused: "继续" }[state];
-  element("stop").disabled = state === "idle" && index === 0 && !completed;
+  element("stop").disabled = state === "idle" && index === 0 && offset === 0 && !completed;
   element("previous").disabled = index === 0;
   element("next").disabled = index === paragraphNodes.length - 1;
-  progress.value = completed ? paragraphNodes.length : index;
+  if (!previewing) {
+    renderTimeline(timeline.timeAt(index, offset), completed);
+  }
+  if (state === "playing") {
+    timelineTimer ??= setInterval(refreshTimeline, 250);
+  } else {
+    stopTimelineTimer();
+  }
   position.textContent = completed ? "已读完" : "第 " + (index + 1) + " / " + paragraphNodes.length + " 段";
   element("player-status").textContent = message;
-  const showPosition = state !== "idle" || (index > 0 && !completed);
+  const showPosition = state !== "idle" || (!completed && (index > 0 || offset > 0));
   renderHighlight(showPosition ? index : -1, showPosition ? sentence : null);
 
   if (progressChanged && activeEntry) {
-    callLibrary("progress", { id: snapshot.id, version: snapshot.version, index, completed }).catch((error) => {
+    callLibrary("progress", { id: snapshot.id, version: snapshot.version, index, offset, completed }).catch((error) => {
       storageStatus.textContent = error.message;
     });
   }
 }
 
+function bindParagraphPlayback(content) {
+  const holdDelay = 500;
+  const movementLimit = 8;
+  const hint = element("paragraph-hold-hint");
+  let press;
+  let releasedTouch;
+
+  function hasSelection() {
+    return window.getSelection()?.isCollapsed === false;
+  }
+
+  function withinLimit(event, held) {
+    return Math.hypot(event.clientX - held.x, event.clientY - held.y) <= movementLimit;
+  }
+
+  function cancelIfSelected() {
+    if (hasSelection()) {
+      cancelPress();
+    }
+  }
+
+  function cancelPress() {
+    if (!press) {
+      return;
+    }
+    clearTimeout(press.timer);
+    press = undefined;
+    hint.hidden = true;
+    window.removeEventListener("scroll", cancelPress, true);
+    window.removeEventListener("blur", cancelPress);
+    document.removeEventListener("selectionchange", cancelIfSelected);
+  }
+
+  function cancelPointer(event) {
+    if (event.pointerId === press?.pointerId) {
+      cancelPress();
+    }
+  }
+
+  content.addEventListener("pointerdown", (event) => {
+    cancelPress();
+    releasedTouch = undefined;
+    if (!event.isPrimary || event.button !== 0 || hasSelection()) {
+      return;
+    }
+
+    const paragraph = event.target.closest("#paragraphs p");
+    const index = paragraphNodes.indexOf(paragraph);
+    if (index < 0) {
+      return;
+    }
+
+    const { clientX: x, clientY: y } = event;
+    const caret = document.caretRangeFromPoint?.(x, y);
+    if (!caret || !paragraph.contains(caret.startContainer)) {
+      return;
+    }
+    const prefix = document.createRange();
+    prefix.selectNodeContents(paragraph);
+    prefix.setEnd(caret.startContainer, caret.startOffset);
+
+    const shortcut = event.pointerType === "mouse" && event.altKey;
+    const held = {
+      paragraph, index, offset: prefix.toString().length, x, y, shortcut,
+      pointerId: event.pointerId, pointerType: event.pointerType, armed: shortcut,
+    };
+    press = held;
+    window.addEventListener("scroll", cancelPress, { capture: true, passive: true });
+    window.addEventListener("blur", cancelPress);
+    document.addEventListener("selectionchange", cancelIfSelected);
+
+    if (!shortcut) {
+      held.timer = setTimeout(() => {
+        if (press !== held || hasSelection()) {
+          cancelIfSelected();
+          return;
+        }
+        held.armed = true;
+        hint.hidden = false;
+        const above = y - hint.offsetHeight - 12;
+        const top = above >= 8 ? above : Math.min(y + 12, window.innerHeight - hint.offsetHeight - 8);
+        const left = Math.min(x + 12, window.innerWidth - hint.offsetWidth - 8);
+        hint.style.top = Math.max(8, top) + "px";
+        hint.style.left = Math.max(8, left) + "px";
+      }, holdDelay);
+    }
+  });
+
+  content.addEventListener("pointermove", (event) => {
+    if (event.pointerId === press?.pointerId && !withinLimit(event, press)) {
+      cancelPress();
+    }
+  });
+
+  content.addEventListener("pointerup", (event) => {
+    const held = press;
+    if (!held || event.pointerId !== held.pointerId) {
+      return;
+    }
+    cancelPress();
+    if (!held.armed || event.button !== 0 || !withinLimit(event, held)
+        || hasSelection() || (held.shortcut && !event.altKey)) {
+      return;
+    }
+    if (held.pointerType === "touch") {
+      releasedTouch = { ...held, expiresAt: performance.now() + holdDelay };
+    }
+    speech.playFrom(held.index, held.offset);
+  });
+
+  content.addEventListener("pointerleave", cancelPointer);
+  content.addEventListener("pointercancel", cancelPointer);
+
+  content.addEventListener("contextmenu", (event) => {
+    const touchMenu = event.pointerType === "touch" || event.sourceCapabilities?.firesTouchEvents;
+    if (!touchMenu || hasSelection()) {
+      return;
+    }
+    const held = press ?? releasedTouch;
+    if (held?.pointerType === "touch"
+        && (held === press || performance.now() <= held.expiresAt)
+        && event.target.closest("#paragraphs p") === held.paragraph && withinLimit(event, held)) {
+      event.preventDefault();
+    }
+  });
+}
+
 function renderArticle(article, entry) {
   snapshot = article;
-  document.title = snapshot.title + " · 听阅";
+  document.title = snapshot.title + " · elaina";
   element("title").textContent = snapshot.title;
   element("source").textContent = snapshot.source;
   element("source").hidden = !snapshot.source;
@@ -265,30 +438,54 @@ function renderArticle(article, entry) {
     return;
   }
   player.hidden = false;
-  progress.max = paragraphNodes.length;
-  const speech = new ParagraphSpeech(snapshot.paragraphs, snapshot.language, updateControls, activeEntry ?? {});
+  timeline = createTimeline(snapshot.paragraphs);
+  speech = new ParagraphSpeech(snapshot.paragraphs, snapshot.language, updateControls, activeEntry ?? {});
+  bindParagraphPlayback(content);
   toggle.addEventListener("click", () => speech.toggle());
   element("stop").addEventListener("click", () => speech.stop());
   element("previous").addEventListener("click", () => speech.move(-1));
   element("next").addEventListener("click", () => speech.move(1));
 
+  function targetTime() {
+    return timeline.duration * (progress.valueAsNumber / Number(progress.max));
+  }
+
+  progress.addEventListener("input", () => {
+    previewing = true;
+    const time = targetTime();
+    renderTimeline(time, time === timeline.duration, true);
+  });
+  progress.addEventListener("change", () => {
+    const target = timeline.positionAt(targetTime());
+    previewing = false;
+    speech.seek(target.index, target.offset, target.completed);
+  });
+  progress.addEventListener("pointercancel", () => {
+    previewing = false;
+    refreshTimeline();
+  });
+
   const rate = element("rate");
   rate.addEventListener("input", () => {
-    element("rate-value").value = rate.valueAsNumber.toFixed(1) + "×";
-    speech.setRate(rate.valueAsNumber);
+    timelineRate = rate.valueAsNumber;
+    element("rate-value").value = timelineRate.toFixed(1) + "×";
+    speech.setRate(timelineRate);
   });
-  window.addEventListener("pagehide", () => speech.dispose());
+  window.addEventListener("pagehide", () => {
+    stopTimelineTimer();
+    speech.dispose();
+  });
 }
 
 async function loadArticle() {
   if (startsInLibrary) {
-    notice.textContent = "从阅读库选择一篇文章，或在网页上点击听阅图标。";
+    notice.textContent = "从阅读库选择一篇文章，或在网页上点击 elaina 图标。";
     await setLibraryVisible(true);
     return;
   }
 
   if (location.hash === "#storage-error") {
-    notice.textContent = "无法暂存正文。请关闭其他听阅阅读页后再试。";
+    notice.textContent = "无法暂存正文。请关闭其他 elaina 阅读页后再试。";
     return;
   }
 
@@ -307,7 +504,7 @@ async function loadArticle() {
   const key = "reader:" + tab?.id;
   const article = (await chrome.storage.session.get(key))[key];
   if (!article || article.error) {
-    notice.textContent = article?.error ?? "阅读内容已失效。请返回原网页，再点击听阅图标。";
+    notice.textContent = article?.error ?? "阅读内容已失效。请返回原网页，再点击 elaina 图标。";
     return;
   }
 

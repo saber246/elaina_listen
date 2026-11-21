@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>听阅</title>
+  <title>elaina</title>
   <link rel="icon" href="icons/icon-32.png">
   <link rel="stylesheet" href="reader.css">
   <script type="module" src="reader.js"></script>
@@ -11,10 +11,10 @@
 <body>
   <header class="masthead">
     <div class="masthead-inner">
-      <div class="brand"><img src="icons/icon-48.png" width="32" height="32" alt="">听阅</div>
+      <div class="brand"><img src="icons/icon-48.png" width="32" height="32" alt="">elaina</div>
       <nav aria-label="阅读设置">
         <button id="library-button" class="quiet" type="button" aria-controls="library" aria-expanded="false">阅读库</button>
-        <button id="theme" class="quiet" type="button" aria-pressed="false">深色</button>
+        <button id="theme" class="quiet" type="button">深色</button>
       </nav>
     </div>
   </header>
@@ -46,13 +46,19 @@
             </label>
           </div>
           <div class="progress-row">
-            <progress id="progress" aria-label="朗读进度" max="1" value="0"></progress>
+            <input id="progress" type="range" min="0" max="1" step="1" value="0" aria-label="拖动调整朗读进度">
             <span id="position"></span>
+          </div>
+          <div class="timeline-times">
+            <span id="elapsed-time"></span>
+            <span id="total-time"></span>
+            <span id="remaining-time"></span>
           </div>
           <p id="player-status" class="status" role="status"></p>
         </section>
 
         <div id="paragraphs" class="paragraphs"></div>
+        <div id="paragraph-hold-hint" class="paragraph-hold-hint" role="status" hidden>松手从此处朗读</div>
       </article>
     </div>
 

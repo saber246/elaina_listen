@@ -52,6 +52,7 @@ export async function rememberArticle(snapshot) {
     source: snapshot.source,
     count: snapshot.paragraphs.length,
     index: sameVersion ? previous.index : 0,
+    offset: sameVersion ? previous.offset ?? 0 : 0,
     completed: sameVersion ? previous.completed : false,
     favorite: previous?.favorite ?? false,
     openedAt: Date.now(),
@@ -75,12 +76,16 @@ export async function getEntry(id) {
   return (await readIndex()).find((entry) => entry.id === id) ?? null;
 }
 
-export function saveProgress(id, version, index, completed) {
+export function saveProgress(id, version, index, completed, offset = 0) {
   return updateEntry(id, version, (entry) => {
     if (!Number.isInteger(index) || index < 0 || index >= entry.count) {
       return entry;
     }
-    return { ...entry, index, completed: completed === true && index === entry.count - 1 };
+    return {
+      ...entry, index,
+      offset: Number.isSafeInteger(offset) && offset >= 0 ? offset : 0,
+      completed: completed === true && index === entry.count - 1,
+    };
   });
 }
 
