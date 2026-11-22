@@ -1,7 +1,7 @@
 import { INDEX_KEY, THEME_KEY } from "./library.js";
 import { ParagraphSpeech } from "./speech.js";
 import { createTimeline } from "./timeline.js";
-import { YoimiyaSpeech } from "./yoimiya-speech.js";
+import { bindVoicePacks } from "./voice-packs.js";
 
 const element = (id) => document.getElementById(id);
 const notice = element("notice");
@@ -442,11 +442,7 @@ function renderArticle(article, entry) {
   timeline = createTimeline(snapshot.paragraphs);
   speech = new ParagraphSpeech(snapshot.paragraphs, snapshot.language, updateControls, activeEntry ?? {});
   bindParagraphPlayback(content);
-  const yoimiya = new YoimiyaSpeech();
-  element("voice").addEventListener("change", (event) => {
-    const local = event.target.value === "yoimiya";
-    speech.setEngine(local ? yoimiya : window.speechSynthesis, local ? "zh-CN" : snapshot.language);
-  });
+  bindVoicePacks(speech, snapshot.language);
   toggle.addEventListener("click", () => speech.toggle());
   element("stop").addEventListener("click", () => speech.stop());
   element("previous").addEventListener("click", () => speech.move(-1));

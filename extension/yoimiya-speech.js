@@ -1,17 +1,33 @@
-const SYNTHESIZE_URL = "http://127.0.0.1:43167/synthesize";
-const CONNECTION_ERROR = "连接不到宵宫语音助手。请启动本机助手后重试，或切换回系统语音。";
-const PLAYBACK_ERROR = "宵宫语音已合成，但音频播放失败。请重试或切换回系统语音。";
+const ASSISTANT_URL = "http://127.0.0.1:43167";
+export const CONNECTION_ERROR = "连接不到本机语音助手。请启动助手后重试，或切换回系统语音。";
+const TIMEOUT_ERROR = "本机语音合成超时。请重试，或切换回系统语音。";
+const PLAYBACK_ERROR = "本机音频播放失败。请重试或切换回系统语音。";
 
-export class YoimiyaSpeech {
+export function callVoiceAssistant(path, data, signal = AbortSignal.timeout(4000)) {
+  return fetch(ASSISTANT_URL + path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-Elaina-Client": chrome.runtime.id },
+    body: JSON.stringify(data),
+    signal,
+    redirect: "error",
+  });
+}
+
+export class LocalSpeech {
   maxChunkLength = 64;
-  pendingMessage = "正在合成宵宫语音…";
+
+  constructor({ id, name, language }) {
+    this.id = id;
+    this.language = language;
+    this.pendingMessage = `正在合成 ${name} 语音…`;
+  }
 
   get paused() {
     return Boolean(this.current?.paused);
   }
 
   getVoices() {
-    return [{ lang: "zh-CN", localService: true, default: true }];
+    return [{ lang: this.language, localService: true, default: true }];
   }
 
   createUtterance(text) {
@@ -21,18 +37,18 @@ export class YoimiyaSpeech {
   speak(utterance) {
     const task = { utterance, controller: new AbortController(), paused: false };
     this.current = task;
-    this.synthesize(task).catch(() => this.finish(task, CONNECTION_ERROR));
+    this.synthesize(task).catch((error) => {
+      this.finish(task, error.name === "TimeoutError" ? TIMEOUT_ERROR : CONNECTION_ERROR);
+    });
   }
 
   async synthesize(task) {
     const { utterance, controller } = task;
-    const response = await fetch(SYNTHESIZE_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "X-Elaina-Client": chrome.runtime.id },
-      body: JSON.stringify({ text: utterance.text, rate: utterance.rate }),
-      signal: AbortSignal.any([controller.signal, AbortSignal.timeout(30000)]),
-      redirect: "error",
-    });
+    const response = await callVoiceAssistant(
+      "/synthesize",
+      { text: utterance.text, rate: utterance.rate, voice: this.id },
+      AbortSignal.any([controller.signal, AbortSignal.timeout(30000)]),
+    );
     if (!response.ok) {
       const result = await response.json().catch(() => null);
       this.finish(task, result?.message || CONNECTION_ERROR);

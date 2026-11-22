@@ -43,9 +43,9 @@
               音色
               <select id="voice">
                 <option value="system">系统语音</option>
-                <option value="yoimiya">宵宫（本机）</option>
               </select>
             </label>
+            <button id="show-voice-packs" class="quiet" type="button" aria-haspopup="dialog">语音包</button>
             <label class="rate" for="rate">
               语速
               <input id="rate" type="range" min="0.5" max="2" step="0.1" value="1">
@@ -82,5 +82,14 @@
       <ul id="library-list" class="library-list"></ul>
     </section>
   </main>
+  <dialog id="voice-packs" class="voice-packs" aria-labelledby="voice-pack-title">
+    <div class="voice-pack-header">
+      <h2 id="voice-pack-title">语音包</h2>
+      <form method="dialog"><button class="quiet" type="submit">关闭</button></form>
+    </div>
+    <p id="voice-pack-status" class="status" role="status"></p>
+    <ul id="voice-pack-list" class="voice-pack-list"></ul>
+    <button id="refresh-voice-packs" class="quiet" type="button">刷新</button>
+  </dialog>
 </body>
 </html>

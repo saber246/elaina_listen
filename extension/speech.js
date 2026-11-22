@@ -355,7 +355,9 @@ export class ParagraphSpeech {
       this.cancelCurrent();
       this.state = "idle";
       this.sentence = null;
-      console.warn("朗读中断", event.error);
+      if (event.error !== "local-tts") {
+        console.warn("朗读中断", event.error);
+      }
       this.publish(event.message ?? "系统朗读中断。请检查本机语音设置后重试。");
     };
 

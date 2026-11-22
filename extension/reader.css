@@ -202,6 +202,49 @@ h1 {
   font: inherit;
 }
 
+.voice-packs {
+  width: min(31rem, 100% - 2rem);
+  max-height: calc(100% - 2rem);
+  padding: 1.15rem;
+  border: 1px solid var(--border);
+  border-radius: .8rem;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.voice-packs::backdrop {
+  background: #111c1777;
+}
+
+.voice-pack-header,
+.voice-pack-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+}
+
+.voice-pack-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+#voice-pack-status {
+  margin-top: .65rem;
+}
+
+.voice-pack-list {
+  margin: .5rem 0 .85rem;
+  padding: 0;
+  list-style: none;
+}
+
+.voice-pack-list li {
+  min-height: 3.25rem;
+  padding: .4rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
 .rate {
   margin-inline-start: auto;
   color: var(--muted);

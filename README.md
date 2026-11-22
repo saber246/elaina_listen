@@ -8,13 +8,15 @@
 2. 选择「加载解压缩的扩展」并选中 `extension` 文件夹。已加载同一目录的旧版扩展时，在原扩展卡片上点击「重新加载」，保留阅读库。
 3. 打开普通网页文章，点击工具栏扩展菜单里的「elaina listen」，然后点击「播放」。打开后可把它固定到工具栏。
 
-## 本机宵宫音色
+## 本机语音包
 
-1. 双击 desktop 下的 start-yoimiya.cmd，看到「宵宫语音已就绪」后保持窗口开启。启动器使用 D:\onnx_train\venv 的 Python 和 D:\onnx_train\onnx_yoimiya\yoimiya_tts 里的模型、词表和发音词典。
-2. 在 Edge 重新加载扩展，打开一篇中文文章，从阅读页的「音色」下拉框选择「宵宫（本机）」，点击「播放」。
-3. 使用系统语音时可关闭助手。本机助手只监听 127.0.0.1:43167，合成在电脑上完成。
+1. 双击 `desktop/start-voice-packs.cmd`。看到「本机语音助手已就绪」后保持窗口开启。如果已有旧版宵宫助手在运行，先关闭旧窗口。启动器优先使用当前开发机的 `D:\onnx_train\venv`，其他电脑使用 PATH 里的 Python。助手需要 `numpy` 和 `sherpa-onnx`，已用 sherpa-onnx 2.0.2 测试。
+2. 在 Edge 重新加载扩展并打开一篇文章，点播放器里的「语音包」。选择「下载」可从 sherpa-onnx 的 GitHub 发布页获取 Matcha、MeloTTS 或 Kokoro。下载完成后点「使用」，再点击「播放」。语音包下载时需要联网，下载后在本机运行。
+3. 默认会识别项目同级 `models` 目录中的已有模型。宵宫使用 `models/yoimiya`，凡尘使用 `models/fanchen-c` 或 `models/vits-zh-hf-fanchen-C` 下已解压的文件。下载内容保存在 `desktop/voice-packs/`。可以用 `--models-dir` 和 `--download-dir` 指定其他位置。
 
-如果把模型或 Python 环境移到别处，启动器分别接受音色目录和 Python 可执行文件路径作为前两个参数。加载同目录的解压扩展时，启动器会自动计算扩展 ID。使用其它安装方式时，可将 Edge 扩展卡片显示的 ID 作为第三个参数。
+加载同一项目目录的解压扩展时，助手会自动计算扩展 ID。使用其他安装方式时，启动器接受 `--extension-id` 和 Edge 扩展卡片上的 ID。旧版 `start-yoimiya.cmd` 仍接受宵宫目录、Python 路径和扩展 ID 作为位置参数。
+
+助手只监听 `127.0.0.1:43167`。只有点击下载时会向上游请求模型文件，文章文本在本机合成。使用系统语音时可以关闭助手。
 
 ## 验收
 
