@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f6f4fb">
+  <meta name="description" content="在手机上阅读文章、朗读文字和离线听音频。">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <link rel="icon" href="./icons/icon-192.png">
+  <link rel="stylesheet" href="./style.css">
+  <script type="module" src="./app.js"></script>
+  <title>elaina listen</title>
+</head>
+<body>
+  <header class="top">
+    <div class="top-inner">
+      <a class="brand" href="#" aria-label="elaina listen 阅读库">
+        <img src="./icons/icon-192.png" alt="" width="36" height="36">
+        <span>elaina listen</span>
+      </a>
+      <div class="actions">
+        <button id="install" type="button">安装</button>
+        <button id="theme" type="button">深色</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <p id="notice" class="notice" role="status" hidden></p>
+    <section id="library" aria-labelledby="library-title">
+      <div class="library-head">
+        <h1 id="library-title">阅读库</h1>
+        <p id="offline-status" class="muted"></p>
+      </div>
+      <div class="import-panel">
+        <h2>添加到阅读库</h2>
+        <p>粘贴文章，或导入 TXT 和音频。阅读位置会保存在这台设备上。</p>
+        <div class="actions">
+          <button class="primary" id="paste" type="button">粘贴文章</button>
+          <button id="pick-file" type="button">导入文件</button>
+        </div>
+        <input id="file" type="file" accept=".txt,audio/*,.mp3,.m4a,.aac,.wav,.ogg,.opus,.flac" hidden>
+      </div>
+      <div id="filters" class="filters" role="group" aria-label="筛选阅读库">
+        <button type="button" data-filter="all" aria-pressed="true">全部</button>
+        <button type="button" data-filter="text" aria-pressed="false">文章</button>
+        <button type="button" data-filter="audio" aria-pressed="false">音频</button>
+        <button type="button" data-filter="favorite" aria-pressed="false">收藏</button>
+      </div>
+      <p id="empty" class="empty" hidden></p>
+      <ul id="entries" class="entries"></ul>
+    </section>
+
+    <section id="reader" aria-labelledby="reader-title" hidden>
+      <a class="back" href="#">返回阅读库</a>
+      <div class="reader-head">
+        <h1 id="reader-title" tabindex="-1"></h1>
+        <div class="actions">
+          <button id="favorite" type="button" aria-pressed="false">收藏</button>
+          <button id="remove" type="button">移除</button>
+        </div>
+      </div>
+      <div id="paragraphs" class="paragraphs" hidden></div>
+      <section id="speech-player" class="player" aria-label="朗读控制" hidden>
+        <label class="sr-only" for="seek">朗读进度</label>
+        <input id="seek" type="range" min="0" max="1" value="0">
+        <div class="play-position">
+          <output id="position"></output>
+          <output id="remaining"></output>
+        </div>
+        <div class="player-actions">
+          <button id="toggle" class="primary" type="button">播放</button>
+          <button id="previous" type="button">上一段</button>
+          <button id="next" type="button">下一段</button>
+          <label class="rate" for="rate">语速
+            <select id="rate">
+              <option value="0.75">0.75×</option>
+              <option value="1" selected>1.0×</option>
+              <option value="1.25">1.25×</option>
+              <option value="1.5">1.5×</option>
+              <option value="2">2.0×</option>
+            </select>
+          </label>
+        </div>
+        <p id="speech-status" class="play-status" role="status"></p>
+      </section>
+      <section id="audio-player" class="audio-panel" aria-label="离线音频播放器" hidden>
+        <audio id="audio" controls preload="metadata" playsinline></audio>
+        <p id="audio-status" class="muted" role="status"></p>
+      </section>
+    </section>
+  </main>
+
+  <dialog id="paste-dialog" aria-labelledby="paste-title">
+    <form id="paste-form">
+      <h2 id="paste-title">添加文章</h2>
+      <label for="article-title">标题（可选）</label>
+      <input id="article-title" type="text" maxlength="120">
+      <label for="article-text">正文</label>
+      <textarea id="article-text" rows="7" required placeholder="在这里粘贴文章"></textarea>
+      <p id="paste-error" class="notice" role="status" hidden></p>
+      <div class="actions dialog-actions">
+        <button type="button" data-close="paste-dialog">取消</button>
+        <button class="primary" id="save-article" type="submit">保存文章</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="install-dialog" aria-labelledby="install-title">
+    <h2 id="install-title">安装到手机</h2>
+    <p>iPhone 在 Safari 的分享菜单里选择「添加到主屏幕」。</p>
+    <p>Android 在浏览器菜单里选择「安装应用」或「添加到主屏幕」。</p>
+    <div class="dialog-actions actions"><button type="button" data-close="install-dialog">知道了</button></div>
+  </dialog>
+
+  <dialog id="remove-dialog" aria-labelledby="remove-title">
+    <h2 id="remove-title">移除这条内容</h2>
+    <p>会清除这台设备上的内容、收藏和阅读位置。</p>
+    <div class="actions dialog-actions">
+      <button type="button" data-close="remove-dialog">取消</button>
+      <button class="danger" id="confirm-remove" type="button">移除</button>
+    </div>
+  </dialog>
+</body>
+</html>

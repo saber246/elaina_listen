@@ -186,6 +186,22 @@ h1 {
   flex-wrap: wrap;
 }
 
+.voice-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+}
+
+.voice-picker select {
+  min-height: 2.65rem;
+  padding-inline: .45rem;
+  border: 1px solid var(--border);
+  border-radius: .5rem;
+  color: inherit;
+  background: var(--surface);
+  font: inherit;
+}
+
 .rate {
   margin-inline-start: auto;
   color: var(--muted);

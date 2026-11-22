@@ -13,7 +13,7 @@ function sentenceRanges(paragraph) {
   })).filter(({ start, end }) => end > start);
 }
 
-function splitParagraph(paragraph, sentences) {
+function splitParagraph(paragraph, sentences, maxLength = MAX_CHUNK_LENGTH) {
   const chunks = [];
   let pending = null;
 
@@ -25,7 +25,7 @@ function splitParagraph(paragraph, sentences) {
   }
 
   for (const { start, end } of sentences) {
-    if (pending && end - pending.start <= MAX_CHUNK_LENGTH) {
+    if (pending && end - pending.start <= maxLength) {
       pending.end = end;
       continue;
     }
@@ -33,16 +33,16 @@ function splitParagraph(paragraph, sentences) {
       addChunk(pending.start, pending.end);
       pending = null;
     }
-    if (end - start <= MAX_CHUNK_LENGTH) {
+    if (end - start <= maxLength) {
       pending = { start, end };
       continue;
     }
 
     for (let cursor = start; cursor < end;) {
-      let boundary = Math.min(cursor + MAX_CHUNK_LENGTH, end);
+      let boundary = Math.min(cursor + maxLength, end);
       if (boundary < end) {
         const wordBreak = paragraph.lastIndexOf(" ", boundary);
-        if (wordBreak > cursor + MAX_CHUNK_LENGTH / 2) {
+        if (wordBreak > cursor + maxLength / 2) {
           boundary = wordBreak + 1;
         } else if (/[\uD800-\uDBFF]/.test(paragraph[boundary - 1])) {
           boundary -= 1;
@@ -197,6 +197,17 @@ export class ParagraphSpeech {
     }
   }
 
+  setEngine(synthesis, language) {
+    const offset = Math.floor(this.offset);
+    this.cancelCurrent();
+    this.synthesis = synthesis;
+    this.language = language;
+    this.voice = null;
+    this.state = "idle";
+    this.setPosition(this.index, offset);
+    this.publish("已切换音色，点击播放继续。");
+  }
+
   setRate(rate) {
     this.rate = rate;
     if (this.state === "idle") {
@@ -224,7 +235,7 @@ export class ParagraphSpeech {
     this.index = index;
     const paragraph = this.paragraphs[index];
     this.sentences = sentenceRanges(paragraph);
-    this.chunks = splitParagraph(paragraph, this.sentences);
+    this.chunks = splitParagraph(paragraph, this.sentences, this.synthesis.maxChunkLength);
     this.chunkIndex = 0;
     this.paragraphRate = this.rate;
     this.sentence = null;
@@ -260,7 +271,7 @@ export class ParagraphSpeech {
 
   speakCurrentChunk() {
     const chunk = this.chunks[this.chunkIndex];
-    const utterance = new SpeechSynthesisUtterance(chunk.text);
+    const utterance = this.synthesis.createUtterance?.(chunk.text) ?? new SpeechSynthesisUtterance(chunk.text);
     utterance.voice = this.voice;
     utterance.lang = this.voice.lang;
     utterance.rate = this.paragraphRate;
@@ -274,11 +285,17 @@ export class ParagraphSpeech {
       this.publish();
     }
 
-    utterance.onstart = () => {
+    utterance.onstart = (event) => {
       if (this.active === utterance) {
         this.hasStarted = true;
         if (this.state === "playing") {
           this.startedAt = performance.now();
+          if (Number.isFinite(event?.duration) && event.duration > 0) {
+            this.charactersPerMillisecond = chunk.text.length / (1000 * event.duration);
+          }
+          if (this.synthesis.pendingMessage) {
+            this.publish("正在朗读");
+          }
         }
       }
     };
@@ -338,10 +355,13 @@ export class ParagraphSpeech {
       this.cancelCurrent();
       this.state = "idle";
       this.sentence = null;
-      console.warn("系统朗读中断", event.error);
-      this.publish("系统朗读中断。请检查本机语音设置后重试。");
+      console.warn("朗读中断", event.error);
+      this.publish(event.message ?? "系统朗读中断。请检查本机语音设置后重试。");
     };
 
+    if (this.synthesis.pendingMessage) {
+      this.publish(this.synthesis.pendingMessage);
+    }
     this.synthesis.speak(utterance);
   }
 

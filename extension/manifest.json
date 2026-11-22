@@ -1,10 +1,11 @@
 {
   "manifest_version": 3,
   "name": "elaina listen",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "用本机语音朗读网页与选中文字，收藏文章并从上次的位置继续听。",
   "incognito": "not_allowed",
   "permissions": ["activeTab", "scripting", "storage", "contextMenus"],
+  "host_permissions": ["http://127.0.0.1/*"],
   "background": {
     "service_worker": "background.js",
     "type": "module"

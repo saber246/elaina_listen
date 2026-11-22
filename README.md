@@ -5,8 +5,16 @@
 ## 运行
 
 1. 在 Edge 打开 `edge://extensions`，开启「开发人员模式」。
-2. 选择「加载解压缩的扩展」并选中 `extension` 文件夹。已加载旧版扩展的用户，请先移除原扩展卡片再重新加载，右键菜单入口才会更新。
+2. 选择「加载解压缩的扩展」并选中 `extension` 文件夹。已加载同一目录的旧版扩展时，在原扩展卡片上点击「重新加载」，保留阅读库。
 3. 打开普通网页文章，点击工具栏扩展菜单里的「elaina listen」，然后点击「播放」。打开后可把它固定到工具栏。
+
+## 本机宵宫音色
+
+1. 双击 desktop 下的 start-yoimiya.cmd，看到「宵宫语音已就绪」后保持窗口开启。启动器使用 D:\onnx_train\venv 的 Python 和 D:\onnx_train\onnx_yoimiya\yoimiya_tts 里的模型、词表和发音词典。
+2. 在 Edge 重新加载扩展，打开一篇中文文章，从阅读页的「音色」下拉框选择「宵宫（本机）」，点击「播放」。
+3. 使用系统语音时可关闭助手。本机助手只监听 127.0.0.1:43167，合成在电脑上完成。
+
+如果把模型或 Python 环境移到别处，启动器分别接受音色目录和 Python 可执行文件路径作为前两个参数。加载同目录的解压扩展时，启动器会自动计算扩展 ID。使用其它安装方式时，可将 Edge 扩展卡片显示的 ID 作为第三个参数。
 
 ## 验收
 
@@ -21,4 +29,8 @@
 
 - `extension/` 是可直接加载的 Manifest V3 扩展。正文提取使用随包分发的 Mozilla Readability 0.6.0。
 - `docs/privacy.md` 与 `docs/store-listing.md` 是商店提交材料。
-- `docs/store-assets/` 存放 Edge Add-ons 列表素材。项目根目录的 `elaina_listen-edge-0.3.0.zip` 是扩展上传包。
+- `docs/store-assets/` 存放 Edge Add-ons 列表素材。项目根目录保留了 0.3.0 的扩展上传包。测试新版请从 extension 目录加载。
+
+## 手机端
+
+手机端从 `mobile/` 打开，可用设备系统语音朗读文章，并在本机保存收藏、进度和已导入的音频。预览和 HTTPS 安装方式见 [手机端说明](mobile/README.md)。

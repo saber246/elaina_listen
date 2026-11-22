@@ -39,6 +39,13 @@
             <button id="previous" class="quiet" type="button">上一段</button>
             <button id="next" class="quiet" type="button">下一段</button>
             <button id="stop" class="quiet" type="button">停止</button>
+            <label class="voice-picker" for="voice">
+              音色
+              <select id="voice">
+                <option value="system">系统语音</option>
+                <option value="yoimiya">宵宫（本机）</option>
+              </select>
+            </label>
             <label class="rate" for="rate">
               语速
               <input id="rate" type="range" min="0.5" max="2" step="0.1" value="1">
